@@ -110,6 +110,68 @@ with gr.Blocks(theme=theme) as demo:
                 examples=["What can you do?", "Write a python script to read a file."],
             )
             
+
+        with gr.Tab("Text → Images"):
+            gr.Markdown("### Text → Images Generation")
+            img_prompt = gr.Textbox(label="Prompt", placeholder="Enter your visual idea...")
+            img_mode = gr.Radio(["Mode A: Simple prompt → single image", "Mode B: Prompt → Gemma 4 generates storyline → sequential multiple images"], label="Mode", value="Mode A: Simple prompt → single image")
+            img_engine = gr.Radio(["Local (Quantized SD 1.5 - runs on 2GB GPU)", "Cloud/AI (Fal.ai Flux, Replicate, Together.ai)"], label="Local vs Cloud Selection", value="Local (Quantized SD 1.5 - runs on 2GB GPU)")
+            img_btn = gr.Button("Generate Image(s) 🎨", variant="primary")
+            img_gallery = gr.Gallery(label="Generated Images")
+            
+            def mock_generate_image(prompt, mode, engine):
+                # Placeholder logic to prove UI works
+                return None
+            img_btn.click(mock_generate_image, inputs=[img_prompt, img_mode, img_engine], outputs=img_gallery)
+            
+        with gr.Tab("Text → Video"):
+            gr.Markdown("### Text → Video (Scene-by-Scene)")
+            vid_prompt = gr.Textbox(label="Initial Prompt", placeholder="Describe the overall video concept...")
+            vid_script_btn = gr.Button("1. Generate Script with Gemma 4 📝", variant="secondary")
+            vid_script = gr.Textbox(label="Video Script / Scenes (Editable)", lines=8)
+            
+            vid_engine = gr.Radio(["Local (MoviePy / Manim / Matplotlib for concept animations)", "Cloud/AI (Kling AI, Magic Hour)"], label="Local vs Cloud Selection", value="Local (MoviePy / Manim / Matplotlib for concept animations)")
+            vid_generate_btn = gr.Button("2. Render Video Scenes 🎬", variant="primary")
+            vid_output = gr.Video(label="Final Rendered Video")
+            
+            def mock_generate_script(prompt):
+                return f"[SCENE 1]\n{prompt}\n\n[SCENE 2]\nZooming into the first element.\n\n[SCENE 3]\nFade to black."
+            def mock_generate_video(script, engine):
+                # Placeholder logic
+                return None
+                
+            vid_script_btn.click(mock_generate_script, inputs=[vid_prompt], outputs=[vid_script])
+            vid_generate_btn.click(mock_generate_video, inputs=[vid_script, vid_engine], outputs=[vid_output])
+            
+        with gr.Tab("Lip-Sync Animation"):
+            gr.Markdown("### Lip-Sync Animation Generator")
+            with gr.Row():
+                with gr.Column():
+                    lip_image = gr.Image(label="Upload Character Face", type="filepath")
+                    lip_audio = gr.Audio(label="Upload Voice Audio (Mic or File)", type="filepath")
+                with gr.Column():
+                    lip_tool = gr.Radio(["Wav2Lip", "SadTalker"], label="Animation Processing Tool", value="Wav2Lip")
+                    lip_engine = gr.Radio(["Local Execution", "Cloud/AI External API"], label="Local vs Cloud Selection", value="Local Execution")
+                    lip_btn = gr.Button("Generate Lip-Sync 🗣️", variant="primary")
+                    lip_video = gr.Video(label="Lip-Sync Animation Output")
+            
+            def mock_generate_lipsync(img, aud, tool, engine):
+                # Placeholder logic
+                return None
+            lip_btn.click(mock_generate_lipsync, inputs=[lip_image, lip_audio, lip_tool, lip_engine], outputs=[lip_video])
+
+        with gr.Tab("Simple Text → Simple Video"):
+            gr.Markdown("### Simple Concept Animation")
+            simple_vid_prompt = gr.Textbox(label="Action Prompt", placeholder="e.g. A basic stick figure waving hello")
+            simple_vid_engine = gr.Radio(["Local Concept Drawing (MoviePy / Manim)", "Cloud/AI Advanced Pipeline"], label="Local vs Cloud Selection", value="Local Concept Drawing (MoviePy / Manim)")
+            simple_vid_btn = gr.Button("Generate Simple Video 🎞️", variant="primary")
+            simple_vid_output = gr.Video(label="Concept Animation Video")
+            
+            def mock_simple_video(prompt, engine):
+                # Placeholder logic
+                return None
+            simple_vid_btn.click(mock_simple_video, inputs=[simple_vid_prompt, simple_vid_engine], outputs=[simple_vid_output])
+
         with gr.Tab("MD"):
             gr.Markdown("### MD Module\n*(Feature incoming - Placeholder)*")
             
