@@ -1,35 +1,19 @@
-# edllmwebappcrossover
+# ED-LLM Web App Crossover
 
-Discover apps/pages created with LLM/SLM that interact with a page to sync value.
+## Overview
+This repository contains a modular Python application built on **Gradio** that acts as a secure, offline, multi-modal orchestrator powered primarily by the local `gemma4:26b` model via Ollama. 
 
-## About
+## Core Capabilities
+The interface is structured into discrete tabs handling various AI generation pipelines:
+1. **Chat UI & Multimodal PDF Engine**: Intercepts PDF documents natively, extracting textual context and injecting it into the prompt pipeline for analysis.
+2. **Text → Images**: Dual-mode engine designed to generate single concept images or sequential storyboards orchestrated by Gemma 4. (Placeholder hooks for Quantized SD 1.5).
+3. **Text → Video**: Deep multi-step workflow where Gemma 4 plans editable scene-by-scene scripts, passing directives to local renderers (MoviePy/Manim) or cloud hooks.
+4. **Lip-Sync Architectures**: UI handling dual-intake (Image + Audio) targeted for Wav2Lip or SadTalker integrations.
+5. **Living Artifacts / Workflow Automation**: (Future Scope) Dynamically routing logic chains through CLI commands, Obsidian, and Memory loops.
 
-This repository is a collection of experimental web applications and pages where LLM/SLM agents interact with browser pages to synchronize values in real-time across different contexts (tabs, windows, devices).
+## System Requirements
+- **Python 3.10+**
+- **Ollama** installed locally with `gemma4:26b` running on port `11434`.
+- Run frontend: `python app.py`
 
-## Goals
-
-- Explore real-time state synchronization between LLM-driven interfaces
-- Build demo apps showcasing cross-page value sync
-- Document patterns for LLM-to-page interaction
-- Create Gradio-based tooling powered by local LLMs
-
-## Stack
-
-- **Gradio** — UI framework for LLM-powered tools
-- **Ollama** — Local LLM inference (gemma4:e4b)
-- Vite + React + TypeScript (future web apps)
-- BroadcastChannel API for cross-tab sync
-- WebSocket for cross-device sync
-
-## Devlog
-
-### 2026-04-06
-- Repository created
-- Local Ollama setup: pulled `gemma4:e4b`, removed `gemma4:26b`
-- VPS OpenClaw upgraded from `2026.3.24` → `2026.4.5`
-- Next: Build Gradio-based tooling with local LLM integration
-
----
-
-*Created and maintained with AI assistance.*
-
+*(Note: Heavy visual models like Diffusers/FFmpeg are deliberately decoupled locally right now to preserve GPU flexibility until targeted.)*
