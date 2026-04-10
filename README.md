@@ -7,7 +7,7 @@ This repository contains a modular Python application built on **Gradio** that a
 The interface is structured into discrete tabs handling various AI generation pipelines:
 1. **Chat UI & Multimodal PDF Engine**: Intercepts PDF documents natively, extracting textual context and injecting it into the prompt pipeline for analysis.
 2. **Text → Images**: Dual-mode engine designed to generate single concept images or sequential storyboards orchestrated by Gemma 4. (Placeholder hooks for Quantized SD 1.5).
-3. **Text → Video**: Deep multi-step workflow where Gemma 4 plans editable scene-by-scene scripts, passing directives to local renderers (MoviePy/Manim) or cloud hooks.
+3. **Text → Video**: Deep multi-step workflow defined in our [Pipeline Architecture Document](docs/TEXT_TO_VIDEO_PIPELINE.md). Gemma 4 acts as a Scene Planner, passing constrained JSON through a Normalizer before arriving at our local beat-driven rendering engine.
 4. **Lip-Sync Architectures**: UI handling dual-intake (Image + Audio) targeted for Wav2Lip or SadTalker integrations.
 5. **Living Artifacts / Workflow Automation**: (Future Scope) Dynamically routing logic chains through CLI commands, Obsidian, and Memory loops.
 

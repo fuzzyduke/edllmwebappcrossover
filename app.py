@@ -3,9 +3,17 @@ import requests
 import json
 import time
 from pypdf import PdfReader
+import os
+import uuid
+import scene_planner
+import scene_validator
+import render_normalizer
+import renderer
+import video_composer
+import help_content
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-MODEL = "gemma4:26b"
+MODEL = "gemma4:e4b"
 
 def predict(message, history):
     start_time = time.time()
@@ -32,7 +40,7 @@ def predict(message, history):
     if extracted_text.strip():
         user_text = f"DOCUMENT CONTEXT:\n{extracted_text}\n\nUSER PROMPT:\n{user_text}"
         
-    print(f"Incoming message text length: {len(user_text)}")
+    # print(f"Incoming message text length: {len(user_text)}")
     
     messages = []
     for item in history:
@@ -49,7 +57,7 @@ def predict(message, history):
             if item[1] and isinstance(item[1], str): messages.append({"role": "assistant", "content": item[1]})
         
     messages.append({"role": "user", "content": user_text})
-    print("Payload to Ollama:", messages)
+    # print("Payload to Ollama:", messages)
     
     payload = {
         "model": MODEL,
@@ -70,7 +78,7 @@ def predict(message, history):
             for line in response.iter_lines():
                 if line:
                     decoded_line = line.decode('utf-8')
-                    print("RAW LINE:", decoded_line)
+                    # print("RAW LINE:", decoded_line)
                     try:
                         data = json.loads(decoded_line)
                         if "message" in data and "content" in data["message"]:
@@ -88,18 +96,38 @@ def predict(message, history):
         print("RequestException:", str(e))
         yield f"Error communicating with local model: {e}"
 
-# Optional dark theme tweaks for premium feel
+# Premium CSS for high contrast and glassmorphism
+css = """
+.gradio-container { background: #0b0f19 !important; }
+.chatbot .message.user {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: white !important;
+    border-radius: 18px 18px 2px 18px !important;
+    border: none !important;
+}
+.chatbot .message.bot {
+    background: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-radius: 18px 18px 18px 2px !important;
+    border: 1px solid #374151 !important;
+}
+.chatbot .message {
+    font-size: 1.05rem !important;
+    line-height: 1.6 !important;
+    padding: 12px 16px !important;
+}
+.chatbot .message-row { margin-bottom: 1rem !important; }
+/* Smooth streaming feel */
+.chatbot .message p { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+"""
+
 theme = gr.themes.Soft(
     primary_hue="purple",
     secondary_hue="indigo",
-).set(
-    body_background_fill="*neutral_950",
-    body_text_color="*neutral_50",
-    border_color_primary="*neutral_800",
-    background_fill_secondary="*neutral_900"
 )
 
-with gr.Blocks(theme=theme) as demo:
+with gr.Blocks() as demo:
     with gr.Tabs():
         with gr.Tab("Chat"):
             gr.ChatInterface(
@@ -125,23 +153,128 @@ with gr.Blocks(theme=theme) as demo:
             img_btn.click(mock_generate_image, inputs=[img_prompt, img_mode, img_engine], outputs=img_gallery)
             
         with gr.Tab("Text → Video"):
-            gr.Markdown("### Text → Video (Scene-by-Scene)")
-            vid_prompt = gr.Textbox(label="Initial Prompt", placeholder="Describe the overall video concept...")
-            vid_script_btn = gr.Button("1. Generate Script with Gemma 4 📝", variant="secondary")
-            vid_script = gr.Textbox(label="Video Script / Scenes (Editable)", lines=8)
-            
-            vid_engine = gr.Radio(["Local (MoviePy / Manim / Matplotlib for concept animations)", "Cloud/AI (Kling AI, Magic Hour)"], label="Local vs Cloud Selection", value="Local (MoviePy / Manim / Matplotlib for concept animations)")
-            vid_generate_btn = gr.Button("2. Render Video Scenes 🎬", variant="primary")
-            vid_output = gr.Video(label="Final Rendered Video")
-            
-            def mock_generate_script(prompt):
-                return f"[SCENE 1]\n{prompt}\n\n[SCENE 2]\nZooming into the first element.\n\n[SCENE 3]\nFade to black."
-            def mock_generate_video(script, engine):
-                # Placeholder logic
-                return None
+            with gr.Row():
+                with gr.Column(scale=3):
+                    gr.Markdown("### 🎞️ Text → Video Generator")
+                    vid_prompt = gr.Textbox(
+                        label="Describe your story", 
+                        placeholder="e.g. A kid wakes up sleepy, drinks milk, then runs outside full of energy...",
+                        lines=3
+                    )
+                    with gr.Row():
+                        vid_style = gr.Dropdown(
+                            ["stick_figure", "geometric", "storyboard"], 
+                            label="Visual Style", 
+                            value="stick_figure"
+                        )
+                        vid_scene_count = gr.Slider(1, 5, step=1, label="Target Scene Count", value=3)
+                    
+                    gr.Markdown("#### Sample Prompts (Click to use)")
+                    examples = [
+                        "A girl plants a seed, waters it, then smiles when a flower blooms.",
+                        "A boy studies late, drinks water, then confidently takes a test.",
+                        "A robot wakes up, charges its battery, then helps clean the room.",
+                        "A child eats breakfast, gains energy, then plays basketball."
+                    ]
+                    for ex in examples:
+                        gr.Button(ex, variant="secondary", size="sm").click(lambda x=ex: x, None, vid_prompt)
+
+                    vid_generate_btn = gr.Button("🚀 Generate Concept Video", variant="primary")
                 
-            vid_script_btn.click(mock_generate_script, inputs=[vid_prompt], outputs=[vid_script])
-            vid_generate_btn.click(mock_generate_video, inputs=[vid_script, vid_engine], outputs=[vid_output])
+                with gr.Column(scale=2):
+                    with gr.Accordion("How it Works 💡", open=False):
+                        gr.Markdown(help_content.HELP_TEXT)
+                    
+                    vid_status = gr.Textbox(label="Creation Status", interactive=False, value="Ready")
+                    vid_status = gr.Textbox(label="Creation Status", interactive=False, value="Ready")
+                    
+                    gr.Markdown("#### Scene Previews")
+                    with gr.Row():
+                        vid_previews = []
+                        for i in range(5):
+                            # We create 5 hidden previews; they will update via outputs
+                            vp = gr.Video(label=f"Scene {i+1}", height=200, min_width=150)
+                            vid_previews.append(vp)
+                    
+                    vid_output_final = gr.Video(label="Final Stitched Concept Video")
+                    
+                    with gr.Accordion("Debug: Story Plan (JSON) 📝", open=False):
+                        vid_plan_json = gr.JSON()
+                        
+                    with gr.Accordion("Debug: Render Plan (JSON) 🛠️", open=False):
+                        vid_render_json = gr.JSON()
+                    
+                    def generate_video_flow(prompt, style, scene_count):
+                        preview_clips = [None] * 5
+                        
+                        def build_yield(status_text, final_vid, story_j, render_j):
+                            """Helper to return the exact number of outputs expected by Gradio."""
+                            return [status_text, final_vid, story_j, render_j] + preview_clips
+
+                        yield build_yield("🧠 Phase 1/5: Sending request to Gemma...", None, None, None)
+                        try:
+                            # Step 1: Planning
+                            yield build_yield("⏳ Phase 1/5: Gemma is thinking (typically 1-3 minutes)...", None, None, None)
+                            raw_plan = scene_planner.plan_scenes(f"Style: {style}, Scene Count: {scene_count}. Prompt: {prompt}")
+                            
+                            if not raw_plan:
+                                yield build_yield("❌ Error: Failed to generate scene plan. (Timeout or Malformed JSON)", None, None, None)
+                                return
+                                
+                            # Step 2: Validation
+                            yield build_yield("🔍 Phase 2/5: Validating and repairing plan...", None, raw_plan, None)
+                            valid_plan, warnings = scene_validator.validate_plan(raw_plan)
+                            
+                            # Step 3: Normalization
+                            yield build_yield("⚙️ Phase 3/5: Normalizing to render instructions...", None, valid_plan, None)
+                            render_scenes, template_names, norm_warnings = render_normalizer.normalize_plan(valid_plan)
+                            
+                            all_warnings = warnings + norm_warnings
+                            if all_warnings:
+                                print(f"Normalization Warnings: {all_warnings}")
+                                
+                            yield build_yield(f"✅ Phase 3/5: Plans ready. Moving to render...", None, valid_plan, render_scenes)
+                            
+                            # Step 4: Rendering & Save scene clips
+                            gen_id = str(uuid.uuid4())[:8]
+                            clip_paths = []
+                            for i, r_scene in enumerate(render_scenes):
+                                if i >= 5: break  # Cap max scenes in UI
+                                progress = f"🎨 Phase 4/5: Rendering Scene {i+1}/{len(render_scenes)} ({template_names[i]})..."
+                                yield build_yield(progress, None, valid_plan, render_scenes)
+                                
+                                try:
+                                    scene_frames = renderer.render_scene(r_scene)
+                                    scene_path = f"scene_{gen_id}_{i}.mp4"
+                                    video_composer.compose_scene_clip(scene_frames, scene_path)
+                                    
+                                    clip_paths.append(scene_path)
+                                    preview_clips[i] = scene_path
+                                    
+                                    # Yield to update the preview player piece by piece
+                                    yield build_yield(f"✅ Scene {i+1} complete.", None, valid_plan, render_scenes)
+                                except Exception as re_err:
+                                    yield build_yield(f"⚠️ Scene {i+1} render failed: {re_err}", None, valid_plan, render_scenes)
+                                
+                            if not clip_paths:
+                                yield build_yield("❌ Error: All scene renders failed.", None, valid_plan, render_scenes)
+                                return
+
+                            # Step 5: Stitching
+                            yield build_yield("🎞️ Phase 5/5: Stitching final video...", None, valid_plan, render_scenes)
+                            output_filename = f"video_{gen_id}_final.mp4"
+                            final_path = video_composer.compose_video(clip_paths, output_filename)
+                            
+                            yield build_yield("✅ Success! Video generated.", final_path, valid_plan, render_scenes)
+                        except Exception as e:
+                            yield build_yield(f"❌ Unexpected Error: {str(e)}", None, None, None)
+
+                    outputs_list = [vid_status, vid_output_final, vid_plan_json, vid_render_json] + vid_previews
+                    vid_generate_btn.click(
+                        generate_video_flow, 
+                        inputs=[vid_prompt, vid_style, vid_scene_count], 
+                        outputs=outputs_list
+                    )
             
         with gr.Tab("Lip-Sync Animation"):
             gr.Markdown("### Lip-Sync Animation Generator")
@@ -218,4 +351,4 @@ with gr.Blocks(theme=theme) as demo:
             """)
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=theme, css=css, server_name="0.0.0.0", server_port=7860)
