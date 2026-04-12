@@ -11,7 +11,7 @@ from scene_schema import (
 )
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-MODEL = "llama3.2:latest"
+MODEL = "gemma4:e4b"
 
 SYSTEM_PROMPT = f"""You are a Scene Planner for a simple animated storyboard generator.
 Your job: convert a user's story prompt into a structured JSON scene plan.
@@ -140,77 +140,6 @@ def plan_scenes(prompt):
         print(f"Scene planning failed: {e}")
         return None
 
-SINGLE_SCENE_PROMPT = f"""You are a Single Scene Planner for an animated storyboard generator.
-Your job: output the structured JSON for exactly ONE scene.
-
-RULES:
-- Return ONLY valid JSON. No markdown fences. No explanation.
-- Use ONLY the allowed values listed below.
-- Keep the action concise.
-
-ALLOWED VALUES:
-- background: {json.dumps(ALLOWED_BACKGROUNDS)}
-- intended_motion (array of poses in order): {json.dumps(ALLOWED_MOTIONS)}
-- key_objects: {json.dumps(ALLOWED_OBJECTS)}
-- transition: {json.dumps(ALLOWED_TRANSITIONS)}
-- character shape: {json.dumps(ALLOWED_SHAPES)}
-
-SCHEMA:
-{{
-  "scene_number": integer,
-  "duration": integer,
-  "background": "one of allowed backgrounds",
-  "characters": [
-    {{"id": "name", "shape": "one of allowed shapes", "color_hint": "color name"}}
-  ],
-  "action_summary": "short description of what happens",
-  "key_objects": ["from allowed objects list"],
-  "intended_motion": ["from allowed motions list, in order"],
-  "caption": "text to display at bottom of scene",
-  "transition": "one of allowed transitions"
-}}
-
-Generate the JSON for this scene brief. Remember: ONLY JSON, no other text."""
-
-def plan_single_scene(scene_brief, scene_num=1, duration=4):
-    """Specific planner that generates a single scene dictionary."""
-    messages = [
-        {"role": "system", "content": SINGLE_SCENE_PROMPT},
-        {"role": "user", "content": f"Scene Number: {scene_num}, Duration: {duration}s. Brief:\n{scene_brief}"}
-    ]
-    payload = {
-        "model": MODEL,
-        "messages": messages,
-        "stream": False,
-        "format": "json"
-    }
-
-    try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=300)
-        if response.status_code == 200:
-            result = response.json()
-            content = result['message']['content'].strip()
-            
-            # Extract JSON object
-            if "{" in content and "}" in content:
-                content = content[content.find("{"):content.rfind("}") + 1]
-            content = re.sub(r'```json\n?|\n?```', '', content).strip()
-            
-            try:
-                scene_dict = json.loads(content)
-                # Ensure the correct scene number is enforced
-                scene_dict["scene_number"] = scene_num
-                # Ensure duration is enforced if missing
-                if "duration" not in scene_dict:
-                    scene_dict["duration"] = duration
-                return scene_dict
-            except json.JSONDecodeError as je:
-                print(f"JSON Parse Error (Single Scene): {je}")
-                return None
-        return None
-    except Exception as e:
-        print(f"Single Scene planning failed: {e}")
-        return None
 
 if __name__ == "__main__":
     test_prompt = "A robot wakes up, charges its battery, then helps clean the room."

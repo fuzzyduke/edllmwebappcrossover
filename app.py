@@ -11,10 +11,9 @@ import render_normalizer
 import renderer
 import video_composer
 import help_content
-import manual_scene_ui
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-MODEL = "llama3.2:latest"
+MODEL = "gemma4:e4b"
 
 def predict(message, history):
     start_time = time.time()
@@ -134,8 +133,8 @@ with gr.Blocks() as demo:
             gr.ChatInterface(
                 fn=predict,
                 multimodal=True,
-                title="Llama 3.2 Local Intelligence",
-                description="Secure, local chat interface powered by Gradio and Ollama (Llama 3.2 3B).",
+                title="Gemma4 Local Intelligence",
+                description="Secure, local chat interface powered by Gradio and Ollama.",
                 examples=["What can you do?", "Write a python script to read a file."],
             )
             
@@ -153,8 +152,130 @@ with gr.Blocks() as demo:
                 return None
             img_btn.click(mock_generate_image, inputs=[img_prompt, img_mode, img_engine], outputs=img_gallery)
             
-        manual_scene_ui.create_manual_tab_contents()
-        
+        with gr.Tab("Text → Video"):
+            with gr.Row():
+                with gr.Column(scale=3):
+                    gr.Markdown("### 🎞️ Text → Video Generator")
+                    vid_prompt = gr.Textbox(
+                        label="Describe your story", 
+                        placeholder="e.g. A kid wakes up sleepy, drinks milk, then runs outside full of energy...",
+                        lines=3
+                    )
+                    with gr.Row():
+                        vid_style = gr.Dropdown(
+                            ["stick_figure", "geometric", "storyboard"], 
+                            label="Visual Style", 
+                            value="stick_figure"
+                        )
+                        vid_scene_count = gr.Slider(1, 5, step=1, label="Target Scene Count", value=3)
+                    
+                    gr.Markdown("#### Sample Prompts (Click to use)")
+                    examples = [
+                        "A girl plants a seed, waters it, then smiles when a flower blooms.",
+                        "A boy studies late, drinks water, then confidently takes a test.",
+                        "A robot wakes up, charges its battery, then helps clean the room.",
+                        "A child eats breakfast, gains energy, then plays basketball."
+                    ]
+                    for ex in examples:
+                        gr.Button(ex, variant="secondary", size="sm").click(lambda x=ex: x, None, vid_prompt)
+
+                    vid_generate_btn = gr.Button("🚀 Generate Concept Video", variant="primary")
+                
+                with gr.Column(scale=2):
+                    with gr.Accordion("How it Works 💡", open=False):
+                        gr.Markdown(help_content.HELP_TEXT)
+                    
+                    vid_status = gr.Textbox(label="Creation Status", interactive=False, value="Ready")
+                    vid_status = gr.Textbox(label="Creation Status", interactive=False, value="Ready")
+                    
+                    gr.Markdown("#### Scene Previews")
+                    with gr.Row():
+                        vid_previews = []
+                        for i in range(5):
+                            # We create 5 hidden previews; they will update via outputs
+                            vp = gr.Video(label=f"Scene {i+1}", height=200, min_width=150)
+                            vid_previews.append(vp)
+                    
+                    vid_output_final = gr.Video(label="Final Stitched Concept Video")
+                    
+                    with gr.Accordion("Debug: Story Plan (JSON) 📝", open=False):
+                        vid_plan_json = gr.JSON()
+                        
+                    with gr.Accordion("Debug: Render Plan (JSON) 🛠️", open=False):
+                        vid_render_json = gr.JSON()
+                    
+                    def generate_video_flow(prompt, style, scene_count):
+                        preview_clips = [None] * 5
+                        
+                        def build_yield(status_text, final_vid, story_j, render_j):
+                            """Helper to return the exact number of outputs expected by Gradio."""
+                            return [status_text, final_vid, story_j, render_j] + preview_clips
+
+                        yield build_yield("🧠 Phase 1/5: Sending request to Gemma...", None, None, None)
+                        try:
+                            # Step 1: Planning
+                            yield build_yield("⏳ Phase 1/5: Gemma is thinking (typically 1-3 minutes)...", None, None, None)
+                            raw_plan = scene_planner.plan_scenes(f"Style: {style}, Scene Count: {scene_count}. Prompt: {prompt}")
+                            
+                            if not raw_plan:
+                                yield build_yield("❌ Error: Failed to generate scene plan. (Timeout or Malformed JSON)", None, None, None)
+                                return
+                                
+                            # Step 2: Validation
+                            yield build_yield("🔍 Phase 2/5: Validating and repairing plan...", None, raw_plan, None)
+                            valid_plan, warnings = scene_validator.validate_plan(raw_plan)
+                            
+                            # Step 3: Normalization
+                            yield build_yield("⚙️ Phase 3/5: Normalizing to render instructions...", None, valid_plan, None)
+                            render_scenes, template_names, norm_warnings = render_normalizer.normalize_plan(valid_plan)
+                            
+                            all_warnings = warnings + norm_warnings
+                            if all_warnings:
+                                print(f"Normalization Warnings: {all_warnings}")
+                                
+                            yield build_yield(f"✅ Phase 3/5: Plans ready. Moving to render...", None, valid_plan, render_scenes)
+                            
+                            # Step 4: Rendering & Save scene clips
+                            gen_id = str(uuid.uuid4())[:8]
+                            clip_paths = []
+                            for i, r_scene in enumerate(render_scenes):
+                                if i >= 5: break  # Cap max scenes in UI
+                                progress = f"🎨 Phase 4/5: Rendering Scene {i+1}/{len(render_scenes)} ({template_names[i]})..."
+                                yield build_yield(progress, None, valid_plan, render_scenes)
+                                
+                                try:
+                                    scene_frames = renderer.render_scene(r_scene)
+                                    scene_path = f"scene_{gen_id}_{i}.mp4"
+                                    video_composer.compose_scene_clip(scene_frames, scene_path)
+                                    
+                                    clip_paths.append(scene_path)
+                                    preview_clips[i] = scene_path
+                                    
+                                    # Yield to update the preview player piece by piece
+                                    yield build_yield(f"✅ Scene {i+1} complete.", None, valid_plan, render_scenes)
+                                except Exception as re_err:
+                                    yield build_yield(f"⚠️ Scene {i+1} render failed: {re_err}", None, valid_plan, render_scenes)
+                                
+                            if not clip_paths:
+                                yield build_yield("❌ Error: All scene renders failed.", None, valid_plan, render_scenes)
+                                return
+
+                            # Step 5: Stitching
+                            yield build_yield("🎞️ Phase 5/5: Stitching final video...", None, valid_plan, render_scenes)
+                            output_filename = f"video_{gen_id}_final.mp4"
+                            final_path = video_composer.compose_video(clip_paths, output_filename)
+                            
+                            yield build_yield("✅ Success! Video generated.", final_path, valid_plan, render_scenes)
+                        except Exception as e:
+                            yield build_yield(f"❌ Unexpected Error: {str(e)}", None, None, None)
+
+                    outputs_list = [vid_status, vid_output_final, vid_plan_json, vid_render_json] + vid_previews
+                    vid_generate_btn.click(
+                        generate_video_flow, 
+                        inputs=[vid_prompt, vid_style, vid_scene_count], 
+                        outputs=outputs_list
+                    )
+            
         with gr.Tab("Lip-Sync Animation"):
             gr.Markdown("### Lip-Sync Animation Generator")
             with gr.Row():
@@ -203,11 +324,11 @@ with gr.Blocks() as demo:
             
         with gr.Tab("About"):
             gr.Markdown("""
-            ## About Llama 3.2 Local Intelligence
+            ## About Gemma4 Local Intelligence
             This application serves as a completely offline, fast, and secure interface bridging you to local logic.
             
             ### Current Capabilities
-            - **Conversational Intelligence**: Engage directly with the locally hosted `llama3.2` model off-grid.
+            - **Conversational Intelligence**: Engage directly with the locally hosted `gemma4:26b` model off-grid.
             - **Document Analysis**: Upload PDF documents into the chat window to extract their contextual data and perform instantaneous analysis.
             
             ### Upcoming / Wishlist Features
