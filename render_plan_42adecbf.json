@@ -1,0 +1,140 @@
+[
+  {
+    "scene_number": 1,
+    "duration": 3,
+    "background": "indoor_generic",
+    "caption": "",
+    "transition": "fade",
+    "characters": [
+      {
+        "id": "person",
+        "shape": "circle_face",
+        "color_hint": "white",
+        "position": {
+          "x": 448,
+          "y": 468
+        }
+      }
+    ],
+    "objects": [
+      {
+        "id": "square_item",
+        "type": "square_item",
+        "position": {
+          "x": 600,
+          "y": 446
+        }
+      }
+    ],
+    "beats": [
+      {
+        "time_pct": 0.0,
+        "pose": "stand"
+      },
+      {
+        "time_pct": 0.25,
+        "pose": "arm_raise"
+      },
+      {
+        "time_pct": 0.5,
+        "pose": "look_down"
+      },
+      {
+        "time_pct": 0.75,
+        "pose": "stand_proud"
+      }
+    ]
+  },
+  {
+    "scene_number": 2,
+    "duration": 3,
+    "background": "indoor_generic",
+    "caption": "",
+    "transition": "fade",
+    "characters": [
+      {
+        "id": "person",
+        "shape": "circle_face",
+        "color_hint": "white",
+        "position": {
+          "x": 448,
+          "y": 468
+        }
+      }
+    ],
+    "objects": [
+      {
+        "id": "square_item",
+        "type": "square_item",
+        "position": {
+          "x": 600,
+          "y": 446
+        }
+      }
+    ],
+    "beats": [
+      {
+        "time_pct": 0.0,
+        "pose": "look_down"
+      },
+      {
+        "time_pct": 0.25,
+        "pose": "bend_down"
+      },
+      {
+        "time_pct": 0.5,
+        "pose": "arm_raise"
+      },
+      {
+        "time_pct": 0.75,
+        "pose": "stand_proud"
+      }
+    ]
+  },
+  {
+    "scene_number": 3,
+    "duration": 4,
+    "background": "indoor_generic",
+    "caption": "",
+    "transition": "cut",
+    "characters": [
+      {
+        "id": "person",
+        "shape": "circle_face",
+        "color_hint": "white",
+        "position": {
+          "x": 448,
+          "y": 468
+        }
+      }
+    ],
+    "objects": [
+      {
+        "id": "square_item",
+        "type": "square_item",
+        "position": {
+          "x": 600,
+          "y": 446
+        }
+      }
+    ],
+    "beats": [
+      {
+        "time_pct": 0.0,
+        "pose": "stand_proud"
+      },
+      {
+        "time_pct": 0.25,
+        "pose": "bend_down"
+      },
+      {
+        "time_pct": 0.5,
+        "pose": "look_down"
+      },
+      {
+        "time_pct": 0.75,
+        "pose": "idle"
+      }
+    ]
+  }
+]
